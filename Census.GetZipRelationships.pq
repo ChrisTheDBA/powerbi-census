@@ -1,6 +1,7 @@
 let
 	Census.GetZipRelationships = (geography as text) as table =>
 		let
+			//geography = "State",
 			geographies = Geographies,
 			isState = if geography = "State" then true else false,
 			geographyTable = 
@@ -24,7 +25,8 @@ let
 			RenamedGazetteerColumns = Table.RenameColumns(SelectedGazetteerColumns,ColumnRenameList),
 			MergedQueries = Table.NestedJoin(RenamedGazetteerColumns,if isState then {"state_fips"} else {"geoid"},geographyTable,if isState then {"state_fips"} else {"geoid"},"GetZip",JoinKind.FullOuter),
 			ExpandedStates = if isState then Table.ExpandTableColumn(MergedQueries, "GetZip", {"state_name", "state_abbr"}, {"state_name", "state_abbr"}) else Table.ExpandTableColumn(MergedQueries, "GetZip", {"name"}, {"name"}),
-			AddedIndex = Table.AddIndexColumn(ExpandedStates, "index", 1, 1)
+    #"Filtered Rows" = Table.SelectRows(ExpandedStates, each true),
+			AddedIndex = Table.AddIndexColumn(#"Filtered Rows", "index", 1, 1)
 		in
 			AddedIndex,
     ParameterTypes = type function(
@@ -37,13 +39,13 @@ let
     [
         Documentation.Name =  " Census.GetZipRelationships",
         Documentation.Description = "  Return the relationship between ZIP Code Tabulation Areas  and other geographic entities",
-        Documentation.LongDescription = " Return the relationship between ZIP Code Tabulation Areas (ZCTAs) and other geographic entities. The 𝘨𝘦𝘰𝘨𝘳𝘢𝘱𝘩𝘺 parameter defines the specific geographic type whose relationship with ZCTAs will be created. Most geographic types from the U.S. Census ZIP Code Tabulation Area (ZCTA) Relationship Files website (https://www.census.gov/geo/maps-data/data/zcta_rel_download.html) are available.",
+        Documentation.LongDescription = " Return the relationship between ZIP Code Tabulation Areas (ZCTAs) and other geographic entities. The 𝐠𝐞𝐨𝐠𝐫𝐚𝐩𝐡𝐲 parameter defines the specific geographic type whose relationship with ZCTAs will be created. Most geographic types from the U.S. Census ZIP Code Tabulation Area (ZCTA) Relationship Files website (https://www.census.gov/geo/maps-data/data/zcta_rel_download.html) are available.",
         Documentation.Category = " Table.Transform",
         Documentation.Source = " ",
-        Documentation.Author = " Tony McGovern: www.emdata.ai",
+        Documentation.Author = " Chris Mathews",
         Documentation.Examples = {
             [
-                Description =  "Return a listing of relationships between ZCTAs and U.S. States.", 
+                Description =  "Return a listing of relationships between ZCTAs and Census Geographies.", 
                 Code = " GetZipRelationships(""State"")", 
                 Result = "Table.FromRecords({[geoid = ""01001"",name = ""Autauga County"",year = 2017,geography_type = ""County"",index = 1],[geoid = ""01003"",name = ""Baldwin County"",year = 2017,geography_type = ""County"",index = 2],[geoid = ""01005"",name = ""Barbour County"",year = 2017,geography_type = ""County"",index = 3],[geoid = ""..."",name = ""..."",year = ""..."",geography_type = ""..."",index = ""...""],[geoid = ""72153"",name = ""Yauco Municipio"",year = 2017,geography_type = ""County"",index = 3220]})"
             ]

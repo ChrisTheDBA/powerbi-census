@@ -9,11 +9,8 @@ let
 /* Parameters */
     vintage = Text.From("2015"),
     dataset = "acs/acs5",
-    columns = {"B22007_001E"},
-    geography = "tract",
-    state = "37",
-    county = "183",
-    key = "986e2c9f64e5195d130af103f32f89d8e55cb625",
+    columns = {"B01001_002E"},
+    geography = "county",
 
 /* Errors */
     // define possible errors
@@ -94,13 +91,7 @@ let
     geographies.wildcard = Text.Split(geographies.table{0}[wildcard],";"),
     
 /* Response */
-    data.url = 
-        if geography = "tract" or geography = "block group" then
-            "https://api.census.gov/data/" & vintage & "/" & dataset & "?get=" & Text.Combine(columns, ",") & "&for=" & geography & "&in=state:" & state & " county:" & county & "&key=" & key
-        else
-            "https://api.census.gov/data/" & vintage & "/" & dataset & "?get=" & Text.Combine(columns, ",") & "&for=" & geography & "&key=" & key,
-    //data.url = "https://api.census.gov/data/" & vintage & "/" & dataset & "?get=" & Text.Combine(columns, ",") & "&for=" & geography & "&in=state:" & state & " county:" & county & "&key=" & key,
-    //data.url = "https://api.census.gov/data/" & vintage & "/" & dataset & "?get=" & Text.Combine(columns, ",") & "&for=" & geography,
+    data.url = "https://api.census.gov/data/" & vintage & "/" & dataset & "?get=" & Text.Combine(columns, ",") & "&for=" & geography,
     data.response = Web.Contents(data.url),
     data.responseMetadata = Value.Metadata(data.response),
     data.responseCode = data.responseMetadata[Response.Status],
@@ -111,9 +102,8 @@ let
 /* Data */
     ConvertedToTable = Table.FromList(data.json, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
     ParsedLists = Table.TransformColumns(ConvertedToTable, {"Column1", each Text.Combine(List.Transform(_, Text.From), ";"), type text}),
-    //SplitListValues = Table.SplitColumn(ParsedLists, "Column1", Splitter.SplitTextByDelimiter(";", QuoteStyle.Csv), List.Combine({columns,{"geography"}})),
-    #"Split Column by Delimiter" = Table.SplitColumn(ParsedLists, "Column1", Splitter.SplitTextByDelimiter(";", QuoteStyle.Csv)),
-    PromotedHeaders = Table.PromoteHeaders(#"Split Column by Delimiter", [PromoteAllScalars=true]),
+    SplitListValues = Table.SplitColumn(ParsedLists, "Column1", Splitter.SplitTextByDelimiter(";", QuoteStyle.Csv), List.Combine({columns,{"geography"}})),
+    PromotedHeaders = Table.PromoteHeaders(SplitListValues, [PromoteAllScalars=true]),
     DefinedDataTypes = Table.TransformColumnTypes(PromotedHeaders,variables.dataTypes),
     AssignedColumnLabels = Table.RenameColumns(DefinedDataTypes,variables.labels)
 in

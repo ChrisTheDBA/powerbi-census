@@ -1,7 +1,7 @@
 let
     geography = "county_within_ua",
-    Census.GetShapefiles = Expression.Evaluate(Text.FromBinary(Web.Contents("https://raw.githubusercontent.com/ChrisTheDBA/powerbi-census/master/Census.GetShapefiles.pq")), #shared),
-    Census.GetGeographicAreas = Expression.Evaluate(Text.FromBinary(Web.Contents("https://raw.githubusercontent.com/ChrisTheDBA/powerbi-census/master/M/Census.GetGeographicAreas.pq")), #shared),
+    Census.GetShapefiles = Expression.Evaluate(Text.FromBinary(Web.Contents("https://raw.githubusercontent.com/tonmcg/powerCensus/master/M/Census.GetShapefiles.pq")), #shared),
+    Census.GetGeographicAreas = Expression.Evaluate(Text.FromBinary(Web.Contents("https://raw.githubusercontent.com/tonmcg/powerCensus/master/M/Census.GetGeographicAreas.pq")), #shared),
     statesTable = Census.GetGeographicAreas("2018", "State"),
     FilteredToResultFIPS = Table.SelectRows(statesTable, each ([state_name] <> "Federated States of Micronesia" and [state_name] <> "Marshall Islands" and [state_name] <> "Palau" and [state_name] <> "U.S. Minor Outlying Islands")),
     AddedShapefileName = Table.AddColumn(FilteredToResultFIPS, "filename", each "cb_2017_" & [state_fips] & "_" & geography & "_500k.zip", type text),

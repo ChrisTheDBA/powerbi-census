@@ -1,10 +1,9 @@
 let
 	Census.GetGeographicAreas = (year as text, geography as text) as table =>
 		let
-            UnzipContents = Expression.Evaluate(Text.FromBinary(Web.Contents("https://raw.githubusercontent.com/ChrisTheDBA/powerbi-census/master/UnzipContents.pq")), #shared),
-            Geographies = Expression.Evaluate(Text.FromBinary(Web.Contents("https://raw.githubusercontent.com/ChrisTheDBA/powerbi-census/master/Census.Geographies.pq")), #shared),
-            GetStates = Expression.Evaluate(Text.FromBinary(Web.Contents("https://github.com/ChrisTheDBA/powerbi-census/blob/master/Census.GetStates.pq")), #shared),
-            returnTable = 
+            // year = "2017",
+			// geography = "Census Tract",
+			returnTable = 
                 if geography = "State" then 
                     GetStates(true) 
                 else
@@ -59,14 +58,16 @@ let
 						// get authoritative list of geographic areas for selected geographic area types 
 						GazetteerFile = Csv.Document(UnzipContents(Web.Contents("http://www2.census.gov/geo/docs/maps-data/data/gazetteer/" & year & "_Gazetteer/" & year & "_Gaz_" & GeoQuery & "_national.zip")){0}[Content],[Delimiter="#(tab)", Columns=Expression.Evaluate(Text.From(GeoColumns)), Encoding=1252, QuoteStyle=QuoteStyle.None]),
 						PromotedGazetteerHeaders = Table.PromoteHeaders(GazetteerFile, [PromoteAllScalars=true]),
-						ColumnSelectList = if List.Contains({"Census Tract", "Congressional District", "ZIP Code Tabulation Area"},geography) then {"GEOID"} else {"GEOID", "NAME"},
-						SelectedGazetteerColumns = Table.SelectColumns(PromotedGazetteerHeaders,ColumnSelectList),
-						ColumnRenameList = if List.Contains({"Census Tract", "Congressional District", "ZIP Code Tabulation Area"},geography) then {{"GEOID", "geoid"}} else {{"GEOID", "geoid"}, {"NAME", "name"}},
+    TrimColumnNames = Table.TransformColumnNames(PromotedGazetteerHeaders, Text.Trim),
+						ColumnSelectList = if List.Contains({"Census Tract", "Congressional District", "ZIP Code Tabulation Area"},geography) then {"GEOID", "INTPTLAT", "INTPTLONG"} else {"GEOID", "NAME", "INTPTLAT", "INTPTLONG"},
+						SelectedGazetteerColumns = Table.SelectColumns(TrimColumnNames,ColumnSelectList),
+						ColumnRenameList = if List.Contains({"Census Tract", "Congressional District", "ZIP Code Tabulation Area"},geography) then {{"GEOID", "geoid"}, {"INTPTLAT", "latitude"}, {"INTPTLONG", "longitude"}} else {{"GEOID", "geoid"}, {"NAME", "name"}, {"INTPTLAT", "latitude"}, {"INTPTLONG", "longitude"}},
 						RenamedGazetteerColumns = Table.RenameColumns(SelectedGazetteerColumns,ColumnRenameList),
 						ColumnNamesList = if List.Contains(Table.ColumnNames(RenamedGazetteerColumns),"name") then RenamedGazetteerColumns else Table.AddColumn(RenamedGazetteerColumns, "name", each [geoid], type text),
-						DefinedGazetteerColumns = {{"geoid", type text}, {"name", type text}},
+						DefinedGazetteerColumns = {{"geoid", type text}, {"name", type text}, {"latitude", type text}, {"longitude", type text}},
 						DefinedDataTypes = Table.TransformColumnTypes(ColumnNamesList,DefinedGazetteerColumns),
-						GazetteerTable = DefinedDataTypes,
+    TrimmedLatLong = Table.TransformColumns(DefinedDataTypes,{{"latitude", Text.Trim, type text}, {"longitude", Text.Trim, type text}}),
+						GazetteerTable = TrimmedLatLong,
 						AddedYear = Table.AddColumn(GazetteerTable, "year", each Number.FromText(year), Int64.Type),
 						AddedgeographyType = 
 							Table.AddColumn(
@@ -98,10 +99,10 @@ let
     [
         Documentation.Name =  " Census.GetGeographicAreas",
         Documentation.Description = " Return a listing of all geographic areas for selected United States geographic area types.",
-        Documentation.LongDescription = " Return a listing of all geographic areas for selected United States geographic area types. The year parameter specifies that year's listing of geographic areas. The geography parameter defines the specific geographic type to return. Geographic areas are updated by the U.S. Census Bureau every year. All geographic types from the U.S. Census Gazetteer Files website (https://www.census.gov/geo/maps-data/data/gazetteer.html) are available.",
+        Documentation.LongDescription = " Return a listing of all geographic areas for selected United States geographic area types. The 𝐲𝐞𝐚𝐫 parameter specifies that year's listing of geographic areas. The 𝐠𝐞𝐨𝐠𝐫𝐚𝐩𝐡𝐲 parameter defines the specific geographic type to return. Geographic areas are updated by the U.S. Census Bureau every year. All geographic types from the U.S. Census Gazetteer Files website (https://www.census.gov/geo/maps-data/data/gazetteer.html) are available.",
         Documentation.Category = " Table.Transform",
         Documentation.Source = " ",
-        Documentation.Author = " Tony McGovern: www.emdata.ai",
+        Documentation.Author = " Chris Mathews",
         Documentation.Examples = {
             [
                 Description =  "Return a listing of all United States counties as of 2017.", 
